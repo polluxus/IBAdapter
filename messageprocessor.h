@@ -19,7 +19,7 @@ private:
     {
         while (pIBClient->isConnected())
         {
-            qDebug() << "MessageProcessor: start() from " << QThread::currentThreadId();
+            //qDebug() << "MessageProcessor: start() from " << QThread::currentThreadId();
             pIBClient->processMessages();
         }
     }

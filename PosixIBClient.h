@@ -47,6 +47,7 @@ public slots:
     void onReqMktData();
     void onCancelMktData();
 
+    void onProcessMessages();
     void onTest();
 
 signals:
@@ -66,13 +67,11 @@ private:
     int pubport;
     int subport;
 
-    int nextID = 200;
-
 	void reqCurrentTime();
 	void placeOrder();
 	void cancelOrder();
 
-    int getNextValidID();
+    void getNextValidID();
 
 public:
 	// events
@@ -144,7 +143,7 @@ private:
     std::auto_ptr<QThread> pThread;
     State state;
     time_t sleepDeadline;
-    OrderId orderId;
+    OrderId nextOrderId;
 
 };
 

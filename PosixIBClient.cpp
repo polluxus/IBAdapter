@@ -19,7 +19,7 @@ PosixIBClient::PosixIBClient(QObject *parent) : QObject(parent) //QObject *paren
 {
     state = ST_CONNECT;
     sleepDeadline = 0;
-    orderId = 0;
+    nextOrderId = static_cast<long int> (time(NULL));
 
     pThread.reset(new QThread);
     pThread->start();
@@ -97,6 +97,7 @@ void PosixIBClient::onConnect(int port,  int pubport,  int subport)
     {
         qDebug() << "Connected------------------------------.";
         emit connected();
+        //onProcessMessages();
     }
     else
     {
@@ -108,6 +109,7 @@ void PosixIBClient::onConnect(int port,  int pubport,  int subport)
 
 void PosixIBClient::onDisconnect()
 {
+    qDebug() <<"PosixIBClient::onDisconnect() entered";
 
     disconnect();
 
@@ -120,9 +122,18 @@ void PosixIBClient::onDisconnect()
     emit disconnected();
 }
 
+void PosixIBClient::onProcessMessages()
+{
+    while (isConnected())
+    {
+        processMessages();
+    }
+
+}
+
 void PosixIBClient::processMessages()
 {
-    qDebug() << "PosixIBClient: processMessages() from " << QThread::currentThreadId();
+    //qDebug() << "PosixIBClient: processMessages() from " << QThread::currentThreadId();
 
     fd_set readSet, writeSet, errorSet;
 
@@ -155,12 +166,12 @@ void PosixIBClient::processMessages()
         int ret = select( pClient->fd() + 1, &readSet, &writeSet, NULL, &tval);
 
         if( ret == 0) { // timeout
-            qDebug() <<"PosixClient::processMessages: timeout";
+            //qDebug() <<"PosixClient::processMessages: timeout";
             return;
         }
 
         if( ret < 0) {	// error
-            qDebug() <<"PosixClient::processMessages: disconnect";
+           //qDebug() <<"PosixClient::processMessages: disconnect";
             disconnect();
 
             return;
@@ -168,25 +179,25 @@ void PosixIBClient::processMessages()
 
         if( pClient->fd() < 0)
         {
-            qDebug() << "PosixClient::processMessages, fd() < 0, return b4 writeset";
+            //qDebug() << "PosixClient::processMessages, fd() < 0, return b4 writeset";
             return;
         }
 
         if( FD_ISSET( pClient->fd(), &writeSet)) {
             // socket is ready for writing
-            qDebug() << "PosixClient::processMessages: onSend()";
+            //qDebug() << "PosixClient::processMessages: onSend()";
             pClient->onSend();
         }
 
         if( pClient->fd() < 0)
         {
-            qDebug() << "PosixClient::processMessages, fd() < 0, return b4 readSet";
+            //qDebug() << "PosixClient::processMessages, fd() < 0, return b4 readSet";
             return;
         }
 
         if( FD_ISSET( pClient->fd(), &readSet)) {
             // socket is ready for reading
-            qDebug() << "PosixClient::processMessages: onReceive()";
+            //qDebug() << "PosixClient::processMessages: onReceive()";
             pClient->onReceive();
         }
 
@@ -198,7 +209,6 @@ void PosixIBClient::processMessages()
 void PosixIBClient::onTest()
 {
 
-    pClient->reqIds(nextID);
     qDebug() << "Placing order ....";
     placeOrder();
 
@@ -241,18 +251,10 @@ void PosixIBClient::onCancelMktData()
     pClient->cancelMktData(1);
 }
 
-
-
-int PosixIBClient::getNextValidID()
+void PosixIBClient::getNextValidID()
 {
-    int useID;
-    useID = nextID;
-    nextID += 1;
-    return useID;
+    nextOrderId += 1;
 }
-
-
-
 
 //////////////////////////////////////////////////////////////////
 // methods
@@ -276,14 +278,14 @@ void PosixIBClient::placeOrder()
     contract.expiry = "201509";
 	contract.currency = "USD";
 
-    order.action = "SELL";
-    order.totalQuantity = 1;
+    order.action = "BUY";
+    order.totalQuantity = 5;
 	order.orderType = "LMT";
-    order.lmtPrice = 2018.5;
+    order.lmtPrice = 2045.00;
 
-    qDebug() << "VALID ID:" << nextID;
-    qDebug() << "PosixIBClient: placing order:" ;
-    pClient->placeOrder( getNextValidID(), contract, order);
+    qDebug() << "Placing order using ID:" << nextOrderId;
+    pClient->placeOrder(nextOrderId, contract, order);
+    getNextValidID();
 }
 
 void PosixIBClient::cancelOrder()
@@ -298,13 +300,19 @@ void PosixIBClient::orderStatus( OrderId orderId, const IBString &status, int fi
 	   double lastFillPrice, int clientId, const IBString& whyHeld)
 
 {
-    qDebug() << "OrderStatus:" << QString::fromStdString(status);
+    qDebug() << "OrderStatus:" << "OrderId:" << orderId << ", Status:"
+             << QString::fromStdString(status) << ", filled:" << filled
+             << ", remaining:" << remaining << ", avgPx:" << avgFillPrice
+             << ", permId:" << permId << ", parentId:" << parentId
+             << ", lastFillPrice:" << lastFillPrice
+             << ", clientId:" << clientId
+             << ", whyHeld:" << QString::fromStdString(whyHeld);
 }
 
 void PosixIBClient::nextValidId( OrderId orderId)
 {
-    qDebug() << "nextValidId:" << orderId;
-    nextID = orderId;
+    //qDebug() << "Received nextValidId:" << orderId;
+    //nextOrderId = orderId;
 }
 
 void PosixIBClient::currentTime( long time)
