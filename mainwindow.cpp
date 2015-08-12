@@ -1,6 +1,7 @@
 #include <QtWidgets>
 #include <QDebug>
 #include "PosixIBClient.h"
+#include "messageprocessor.h"
 #include "mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -73,6 +74,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     pIBAdapter = new PosixIBClient;
+
+    std::shared_ptr<PosixIBClient> pIBClient(pIBAdapter);
+    pMsgProcessor = new MessageProcessor(pIBClient);
 
     connect(pIBAdapter, SIGNAL(connected()), this, SLOT(onConnected()));
     connect(pIBAdapter, SIGNAL(disconnected()), this, SLOT(onDisconnected()));
@@ -196,6 +200,8 @@ void MainWindow::onConnected()
         default:
             break;
     }
+
+    pMsgProcessor->start();
 }
 
 void MainWindow::onDisconnected()

@@ -10,12 +10,16 @@
 #include "Contract.h"
 #include "Order.h"
 
-
+const int PING_DEADLINE = 2; // seconds
+const int SLEEP_BETWEEN_PINGS = 30; // seconds
 
 ///////////////////////////////////////////////////////////
 // member funcs
 PosixIBClient::PosixIBClient(QObject *parent) : QObject(parent) //QObject *parent   : QObject(parent)
 {
+    state = ST_CONNECT;
+    sleepDeadline = 0;
+    orderId = 0;
 
     pThread.reset(new QThread);
     pThread->start();
@@ -33,102 +37,39 @@ PosixIBClient::~PosixIBClient()
 
 }
 
-void PosixIBClient::processMessages()
+
+bool PosixIBClient::connect(const char *host, unsigned int port, int clientId)
 {
-    qDebug() <<"starting processMessages() infinite loop";
-    while(isConnected())
+    // trying to connect
+    bool bRes = pClient->eConnect( host, port, clientId);
+    if(bRes)
     {
-        fd_set readSet, writeSet, errorSet;
-
-        struct timeval tval;
-        tval.tv_usec = 0;
-        tval.tv_sec = 0;
-
-        if( pClient->fd() >= 0 )
-        {
-
-
-            FD_ZERO( &readSet);
-            errorSet = writeSet = readSet;
-
-            FD_SET( pClient->fd(), &readSet);
-
-            if( !pClient->isOutBufferEmpty())
-                FD_SET( pClient->fd(), &writeSet);
-
-            FD_SET( pClient->fd(), &errorSet);
-
-            int ret = select( pClient->fd() + 1, &readSet, &writeSet, &errorSet, &tval);
-
-//            if( ret == 0) { // timeout
-//                qDebug() <<"looping..ret = 0 timeout return";
-//                return;
-//            }
-
-            if( ret < 0) {	// error
-                qDebug() <<"looping..ret < 0 , disconn, error return";
-                disconnect();
-
-                return;
-            }
-
-            if( pClient->fd() < 0)
-                return;
-
-            if( FD_ISSET( pClient->fd(), &errorSet)) {
-                // error on socket
-                qDebug() <<"looping..errorSet triggered";
-                pClient->onError();
-            }
-
-            if( pClient->fd() < 0)
-            {
-                qDebug() <<"looping..fd() < 0 , return b4 writeset";
-                return;
-            }
-
-            if( FD_ISSET( pClient->fd(), &writeSet)) {
-                // socket is ready for writing
-                pClient->onSend();
-            }
-
-            if( pClient->fd() < 0)
-            {
-                qDebug() <<"looping..fd() < 0 , return b4 readset";
-                return;
-            }
-
-            if( FD_ISSET( pClient->fd(), &readSet)) {
-                // socket is ready for reading
-                pClient->onReceive();
-            }
-
-
-        }
-
+        qDebug() << "PosixIBClient: connected to server";
     }
-
+    else
+    {
+        qDebug() << "PosixIBClient: failed to connect to server";
+    }
+    return bRes;
 }
 
-void PosixIBClient::onTest()
+void PosixIBClient::disconnect() const
 {
+    pClient->eDisconnect();
+    qDebug() << "PosixIBClient: disconnected to server";
 
-    pClient->reqIds(nextID);
-    qDebug() << "Placing order ....";
-    placeOrder();
-
-//    qDebug() << "Requesting market data ....";
-//    onReqMktData();
 }
 
-void PosixIBClient::sayHello()
+bool PosixIBClient::isConnected() const
 {
-    qDebug() <<"Hello from PosixIBClient";
-    qDebug() << QThread::currentThreadId();
+    return pClient->isConnected();
 }
+
 
 void PosixIBClient::onConnect(int port,  int pubport,  int subport)
 {
+
+    qDebug() << "PosixIBClient: onConnect() from " << QThread::currentThreadId();
     this->port = port;
     this->pubport = pubport;
     this->subport = subport;
@@ -156,9 +97,6 @@ void PosixIBClient::onConnect(int port,  int pubport,  int subport)
     {
         qDebug() << "Connected------------------------------.";
         emit connected();
-
-        processMessages();
-
     }
     else
     {
@@ -181,6 +119,100 @@ void PosixIBClient::onDisconnect()
     qDebug() <<"Disonnected";
     emit disconnected();
 }
+
+void PosixIBClient::processMessages()
+{
+    qDebug() << "PosixIBClient: processMessages() from " << QThread::currentThreadId();
+
+    fd_set readSet, writeSet, errorSet;
+
+    struct timeval tval;
+    tval.tv_usec = 0;
+    tval.tv_sec = 0;
+
+    time_t now = time(NULL);
+
+    if( sleepDeadline > 0) {
+        // initialize timeout with m_sleepDeadline - now
+        qDebug() << "PosixClient::processMessages: m_sleepDeadline";
+        tval.tv_sec = sleepDeadline - now;
+    }
+
+    if( pClient->fd() >= 0 )
+    {
+
+
+        FD_ZERO( &readSet);
+        writeSet = readSet;
+
+        FD_SET( pClient->fd(), &readSet);
+
+        if( !pClient->isOutBufferEmpty())
+            FD_SET( pClient->fd(), &writeSet);
+
+        FD_SET( pClient->fd(), &errorSet);
+
+        int ret = select( pClient->fd() + 1, &readSet, &writeSet, NULL, &tval);
+
+        if( ret == 0) { // timeout
+            qDebug() <<"PosixClient::processMessages: timeout";
+            return;
+        }
+
+        if( ret < 0) {	// error
+            qDebug() <<"PosixClient::processMessages: disconnect";
+            disconnect();
+
+            return;
+        }
+
+        if( pClient->fd() < 0)
+        {
+            qDebug() << "PosixClient::processMessages, fd() < 0, return b4 writeset";
+            return;
+        }
+
+        if( FD_ISSET( pClient->fd(), &writeSet)) {
+            // socket is ready for writing
+            qDebug() << "PosixClient::processMessages: onSend()";
+            pClient->onSend();
+        }
+
+        if( pClient->fd() < 0)
+        {
+            qDebug() << "PosixClient::processMessages, fd() < 0, return b4 readSet";
+            return;
+        }
+
+        if( FD_ISSET( pClient->fd(), &readSet)) {
+            // socket is ready for reading
+            qDebug() << "PosixClient::processMessages: onReceive()";
+            pClient->onReceive();
+        }
+
+
+    }
+
+}
+
+void PosixIBClient::onTest()
+{
+
+    pClient->reqIds(nextID);
+    qDebug() << "Placing order ....";
+    placeOrder();
+
+//    qDebug() << "Requesting market data ....";
+//    onReqMktData();
+}
+
+void PosixIBClient::sayHello()
+{
+    qDebug() <<"Hello from PosixIBClient";
+    qDebug() << QThread::currentThreadId();
+}
+
+
 
 void PosixIBClient::onReqCurrentTime()
 {
@@ -219,30 +251,18 @@ int PosixIBClient::getNextValidID()
     return useID;
 }
 
-bool PosixIBClient::connect(const char *host, unsigned int port, int clientId)
-{
-	// trying to connect
-    bool bRes = pClient->eConnect( host, port, clientId, /* extraAuth */ false);
-	return bRes;
-}
 
-void PosixIBClient::disconnect() const
-{
-    pClient->eDisconnect();
-
-}
-
-bool PosixIBClient::isConnected() const
-{
-    return pClient->isConnected();
-}
 
 
 //////////////////////////////////////////////////////////////////
 // methods
 void PosixIBClient::reqCurrentTime()
 {
+    qDebug() << "PosixIBClient: requesting current time";
+    sleepDeadline = time( NULL) + PING_DEADLINE;
+    state = ST_PING_ACK;
     pClient->reqCurrentTime();
+
 }
 
 void PosixIBClient::placeOrder()
@@ -262,6 +282,7 @@ void PosixIBClient::placeOrder()
     order.lmtPrice = 2018.5;
 
     qDebug() << "VALID ID:" << nextID;
+    qDebug() << "PosixIBClient: placing order:" ;
     pClient->placeOrder( getNextValidID(), contract, order);
 }
 

@@ -11,7 +11,21 @@
 
 
 class EPosixClientSocket;
-class QSocketNotifier;
+
+
+enum State {
+    ST_CONNECT,
+    ST_PLACEORDER,
+    ST_PLACEORDER_ACK,
+    ST_CANCELORDER,
+    ST_CANCELORDER_ACK,
+    ST_PING,
+    ST_PING_ACK,
+    ST_IDLE,
+    ST_REQMKTDATA,
+    ST_REQMKTDATA_ACK
+};
+
 
 class PosixIBClient :public QObject, public EWrapper
 {
@@ -21,6 +35,7 @@ public:
 
     explicit PosixIBClient(QObject *parent = 0);
     virtual ~PosixIBClient();
+    void processMessages();
     //PosixIBClient();
     //~PosixIBClient();
 
@@ -53,7 +68,6 @@ private:
 
     int nextID = 200;
 
-    void processMessages();
 	void reqCurrentTime();
 	void placeOrder();
 	void cancelOrder();
@@ -128,6 +142,9 @@ private:
 
     std::auto_ptr<EPosixClientSocket> pClient;
     std::auto_ptr<QThread> pThread;
+    State state;
+    time_t sleepDeadline;
+    OrderId orderId;
 
 };
 

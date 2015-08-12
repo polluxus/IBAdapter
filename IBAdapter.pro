@@ -18,7 +18,8 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     tws/src/EClientSocketBase.cpp \
     tws/src/EPosixClientSocket.cpp \
-    PosixIBClient.cpp
+    PosixIBClient.cpp \
+    messageprocessor.cpp
 
 HEADERS  += mainwindow.h \
     tws/Shared/CommissionReport.h \
@@ -40,7 +41,8 @@ HEADERS  += mainwindow.h \
     tws/src/EPosixClientSocket.h \
     tws/src/EPosixClientSocketPlatform.h \
     PosixIBClient.h \
-    ibstructs.h
+    ibstructs.h \
+    messageprocessor.h
 
 INCLUDEPATH += tws/src \
                tws/Shared

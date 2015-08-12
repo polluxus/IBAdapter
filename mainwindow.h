@@ -10,6 +10,7 @@ class QComboBox;
 class QPushButton;
 class QPlainTextEdit;
 class PosixIBClient;
+class MessageProcessor;
 
 class MainWindow : public QMainWindow
 {
@@ -19,6 +20,7 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow(); 
     PosixIBClient *pIBAdapter;
+    MessageProcessor* pMsgProcessor;
     void loadIBSettings();
 private:
     QPushButton *btnTest;
