@@ -1,76 +1,29 @@
-#include <QtWidgets>
-#include <QDebug>
-#include "PosixIBClient.h"
-#include "messageprocessor.h"
-#include "mainwindow.h"
+#include "polluxustopbar.h"
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+PolluxusTopBar::PolluxusTopBar(QWidget *parent) :
+    QWidget(parent, Qt::FramelessWindowHint)
 {
+
+    m_nMouseClick_X_Coordinate = 0;
+    m_nMouseClick_Y_Coordinate = 0;
 
     loadIBSettings();
 
-    QWidget *cWidget = new QWidget;
-    setCentralWidget(cWidget);
+    createMenuBar();
+    createToolBar();
+
 
     QHBoxLayout *hLayout = new QHBoxLayout;
+    hLayout->setSpacing(0);
+    hLayout->setMargin(0);
+    hLayout->setContentsMargins(0,0,0,0);
 
-    QLabel *lbMode = new QLabel(tr("Mode:"));
-    QStringList adapterList = QStringList() << QString::fromStdString(demoSetting.discstr)
-                                            << QString::fromStdString(paperSetting.discstr)
-                                            << QString::fromStdString(liveSetting.discstr) ;
-    cmbMode = new QComboBox();
-    cmbMode->addItems(adapterList);
-    cmbMode->setCurrentIndex(0);
-    cmbMode->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
-    btnTest = new QPushButton(tr("test"));
+    hLayout->addWidget(pMenuBar);
+    hLayout->addWidget(pToolBar);
+    setLayout(hLayout);
 
-    btnConnect = new QPushButton(tr("Connect"));
-    btnConnect->setCheckable(true);
-
-    lbLight = new QLabel();
-    lbLight->setFixedWidth(24);
-    lbLight->setFixedHeight(24);
-    lbLight->setScaledContents( true );
-    lbLight->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
-    lbLight->setPixmap(QPixmap(":/images/red.png"));
-
-    QWidget* spacer = new QWidget();
-    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
-    hLayout->addWidget(lbMode);
-    hLayout->addWidget(cmbMode);
-    hLayout->addWidget(spacer);
-    hLayout->addWidget(btnTest);
-    hLayout->addWidget(btnConnect);
-    hLayout->addWidget(lbLight);
-
-    hLayout->setMargin(2);
-    //hLayout->addStretch(1);
-
-    QWidget *hWidget = new QWidget;
-    hWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    //hWidget->setStyleSheet("background-color:white;");
-    hWidget->setLayout(hLayout);
-
-    logEdit = new QPlainTextEdit;
-    logEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    logEdit->setReadOnly(true);
-    logEdit->setMaximumBlockCount(200);
-    logEdit->setPlainText(tr("We are ready"));
-
-    QVBoxLayout *vLayout = new QVBoxLayout;
-    vLayout->addWidget(hWidget);
-    vLayout->addWidget(logEdit);
-    cWidget->setLayout(vLayout);
-
-    connect(btnTest, SIGNAL(clicked(bool)), this, SLOT(onTest()), Qt::DirectConnection);
-    connect(btnConnect, SIGNAL(toggled(bool)), this, SLOT(onConnect()), Qt::DirectConnection);
-    connect(cmbMode, SIGNAL(currentIndexChanged(int)), this, SLOT(onAdapterSettingChange(int)));
-
-    setWindowTitle(tr("IBAdaptor"));
-    setFixedSize(480, 240);
+    adjustTopBarPosition();
 
 
     pIBAdapter = new PosixIBClient;
@@ -80,18 +33,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(pIBAdapter, SIGNAL(connected()), this, SLOT(onConnected()));
     connect(pIBAdapter, SIGNAL(disconnected()), this, SLOT(onDisconnected()));
+
 }
 
-MainWindow::~MainWindow()
-{
-    if(pIBAdapter)
-    {
-        delete pIBAdapter;
-    }
-}
-
-
-void MainWindow::loadIBSettings()
+void PolluxusTopBar::loadIBSettings()
 {
 
     QSettings *ibSettings = new QSettings(":/ibadapter.ini",QSettings::IniFormat);
@@ -123,7 +68,82 @@ void MainWindow::loadIBSettings()
     currSetting = demoSetting;
 }
 
-void MainWindow::onAdapterSettingChange(int currentIndex)
+
+
+void PolluxusTopBar::createMenuBar()
+{
+    pMenuBar = new QMenuBar;
+
+    QAction *quit = new QAction("&Quit", this);
+
+    QMenu *file;
+    file = pMenuBar->addMenu(QIcon(":/images/setup.png"), "Polluxus");
+    file->addAction(quit);
+
+    pMenuBar->addSeparator();
+
+    connect(quit, SIGNAL(triggered()), qApp, SLOT(quit()));
+
+    pMenuBar->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
+}
+
+void PolluxusTopBar::createToolBar()
+{
+
+    pToolBar = new QToolBar;
+
+    QLabel *lbMode = new QLabel(tr("|  Mode:"));
+    QStringList adapterList = QStringList() << QString::fromStdString(demoSetting.discstr)
+                                            << QString::fromStdString(paperSetting.discstr)
+                                            << QString::fromStdString(liveSetting.discstr) ;
+    cmbMode = new QComboBox();
+    cmbMode->addItems(adapterList);
+    cmbMode->setCurrentIndex(0);
+    //cmbMode->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+    btnTest = new QPushButton(tr("test"));
+
+    btnConnect = new QPushButton(tr("Connect"));
+    btnConnect->setCheckable(true);
+
+    lbLight = new QLabel();
+    lbLight->setFixedWidth(24);
+    lbLight->setFixedHeight(24);
+    lbLight->setScaledContents( true );
+    lbLight->setAlignment(Qt::AlignRight);
+    lbLight->setPixmap(QPixmap(":/images/yellow_light.png"));
+
+    QWidget* spacer = new QWidget();
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    //pToolBar->addWidget(moveLabel);
+    pToolBar->addWidget(lbMode);
+    pToolBar->addWidget(cmbMode);
+
+    pToolBar->addWidget(btnTest);
+    pToolBar->addWidget(btnConnect);
+    pToolBar->addWidget(spacer);
+    pToolBar->addWidget(lbLight);
+
+    pToolBar->adjustSize();
+
+    pToolBar->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Fixed );
+
+    connect(btnTest, SIGNAL(clicked(bool)), this, SLOT(onTest()), Qt::DirectConnection);
+    connect(btnConnect, SIGNAL(toggled(bool)), this, SLOT(onConnect()), Qt::DirectConnection);
+    connect(cmbMode, SIGNAL(currentIndexChanged(int)), this, SLOT(onAdapterSettingChange(int)));
+
+}
+
+void PolluxusTopBar::adjustTopBarPosition()
+{
+    resize(QDesktopWidget().availableGeometry().width(), 24);
+    move(0, 0);
+}
+
+
+
+void PolluxusTopBar::onAdapterSettingChange(int currentIndex)
 {
     switch(currentIndex)
     {
@@ -140,12 +160,13 @@ void MainWindow::onAdapterSettingChange(int currentIndex)
             break;
     }
 }
-void MainWindow::onTest()
+
+void PolluxusTopBar::onTest()
 {
     QMetaObject::invokeMethod(pIBAdapter, "onTest", Qt::QueuedConnection);
 }
 
-void MainWindow::onConnect()
+void PolluxusTopBar::onConnect()
 {
     if(btnConnect->isChecked())
     {
@@ -172,12 +193,12 @@ void MainWindow::onConnect()
         cmbMode->setEnabled(false);
         btnConnect->setText(tr("Disconnecting"));
         btnConnect->setEnabled(false);
-        lbLight->setPixmap(QPixmap(":/images/wait.png"));
+        lbLight->setPixmap(QPixmap(":/images/bullet-grey.png"));
 
     }
 }
 
-void MainWindow::onConnected()
+void PolluxusTopBar::onConnected()
 {
     qDebug() << "MainWindow:Recv connected signal from Posix.------"  << QThread::currentThreadId();
 
@@ -189,13 +210,13 @@ void MainWindow::onConnected()
     switch(currentMode)
     {
         case 0:
-            lbLight->setPixmap(QPixmap(":/images/yellow.png"));
+            lbLight->setPixmap(QPixmap(":/images/bullet-yellow.png"));
             break;
         case 1:
-            lbLight->setPixmap(QPixmap(":/images/blue.png"));
+            lbLight->setPixmap(QPixmap(":/images/bullet-blue.png"));
             break;
         case 2:
-            lbLight->setPixmap(QPixmap(":/images/green.png"));
+            lbLight->setPixmap(QPixmap(":/images/bullet-green.png"));
             break;
         default:
             break;
@@ -204,15 +225,14 @@ void MainWindow::onConnected()
     pMsgProcessor->start();
 }
 
-void MainWindow::onDisconnected()
+void PolluxusTopBar::onDisconnected()
 {
     qDebug() << "MainWindow:Recv disconnected signal from Posix.------"  << QThread::currentThreadId();
 
     btnConnect->setText(tr("Connect"));
     btnConnect->setEnabled(true);
     cmbMode->setEnabled(true);
-    lbLight->setPixmap(QPixmap(":/images/red.png"));
+    lbLight->setPixmap(QPixmap(":/images/bullet-red.png"));
 
 }
-
 

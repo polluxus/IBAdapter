@@ -15,13 +15,13 @@ CONFIG += c++11
 QMAKE_CXXFLAGS_WARN_ON = -Wall -Wno-unused-parameter
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
     tws/src/EClientSocketBase.cpp \
     tws/src/EPosixClientSocket.cpp \
     PosixIBClient.cpp \
-    messageprocessor.cpp
+    messageprocessor.cpp \
+    polluxustopbar.cpp
 
-HEADERS  += mainwindow.h \
+HEADERS  += \
     tws/Shared/CommissionReport.h \
     tws/Shared/CommonDefs.h \
     tws/Shared/Contract.h \
@@ -42,7 +42,8 @@ HEADERS  += mainwindow.h \
     tws/src/EPosixClientSocketPlatform.h \
     PosixIBClient.h \
     ibstructs.h \
-    messageprocessor.h
+    messageprocessor.h \
+    polluxustopbar.h
 
 INCLUDEPATH += tws/src \
                tws/Shared
@@ -51,13 +52,16 @@ INCLUDEPATH += $$PWD/../../../../../usr/local/include \
                ../resources/images \
                ../resources/stylesheets
 
-unix:!macx: LIBS += -L$$PWD/../../../../../usr/local/lib/ -lzmq
+#unix:!macx: LIBS += -L$$PWD/../../../../../usr/local/lib/ -lzmq
 
 
 DEPENDPATH += $$PWD/../../../../../usr/local/include
 
 RESOURCES += \
     ../resources/resources.qrc
+
+DISTFILES += \
+    ../resources/ibadapter.ini
 
 
 
