@@ -63,12 +63,10 @@ INCLUDEPATH += ../resources/images \
 RESOURCES += \
     ../resources/resources.qrc
 
-DISTFILES += \
-    ../resources/ibadapter.ini \
-    ../resources/workspace.ini
-
-
 
 #unix:!macx: LIBS += -L$$PWD/../../../../../usr/local/lib/ -lzmq
 #INCLUDEPATH += $$PWD/../../../../../usr/local/include
 #DEPENDPATH += $$PWD/../../../../../usr/local/include
+
+DISTFILES += \
+    workspace.ini
