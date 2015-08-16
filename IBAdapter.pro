@@ -19,7 +19,11 @@ SOURCES += main.cpp\
     tws/src/EPosixClientSocket.cpp \
     PosixIBClient.cpp \
     messageprocessor.cpp \
-    polluxustopbar.cpp
+    polluxustopbar.cpp \
+    polluxuslogger.cpp \
+    contractmanager.cpp \
+    digitalclock.cpp \
+    polluxusoms.cpp
 
 HEADERS  += \
     tws/Shared/CommissionReport.h \
@@ -43,27 +47,28 @@ HEADERS  += \
     PosixIBClient.h \
     ibstructs.h \
     messageprocessor.h \
-    polluxustopbar.h
+    polluxustopbar.h \
+    polluxuslogger.h \
+    contractmanager.h \
+    digitalclock.h \
+    polluxusutility.h \
+    polluxusoms.h
 
 INCLUDEPATH += tws/src \
                tws/Shared
 
-INCLUDEPATH += $$PWD/../../../../../usr/local/include \
-               ../resources/images \
+INCLUDEPATH += ../resources/images \
                ../resources/stylesheets
-
-#unix:!macx: LIBS += -L$$PWD/../../../../../usr/local/lib/ -lzmq
-
-
-DEPENDPATH += $$PWD/../../../../../usr/local/include
 
 RESOURCES += \
     ../resources/resources.qrc
 
 DISTFILES += \
-    ../resources/ibadapter.ini
+    ../resources/ibadapter.ini \
+    ../resources/workspace.ini
 
 
 
-
-
+#unix:!macx: LIBS += -L$$PWD/../../../../../usr/local/lib/ -lzmq
+#INCLUDEPATH += $$PWD/../../../../../usr/local/include
+#DEPENDPATH += $$PWD/../../../../../usr/local/include

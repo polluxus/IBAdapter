@@ -6,6 +6,8 @@
 
 #include <QObject>
 #include <QThread>
+#include <QString>
+#include <QDateTime>
 #include "EWrapper.h"
 #include <memory>
 
@@ -53,6 +55,10 @@ public slots:
 signals:
     void connected();
     void disconnected();
+    void orderSubmitted(QString msg);
+    void orderCanceled(QString msg);
+    void orderUpdated(QString msg);
+    void orderFilled(QString msg);
 
 public:
 

@@ -9,6 +9,9 @@
 #include "ibstructs.h"
 #include "PosixIBClient.h"
 #include "messageprocessor.h"
+#include "polluxuslogger.h"
+#include "digitalclock.h"
+#include "polluxusutility.h"
 
 class PolluxusTopBar : public QWidget
 {
@@ -19,6 +22,7 @@ public:
     MessageProcessor* pMsgProcessor;
 
     explicit PolluxusTopBar(QWidget *parent = 0);
+    virtual ~PolluxusTopBar();
 
     void loadIBSettings();
 
@@ -45,6 +49,9 @@ public:
     };
 
 
+public:
+        void saveWorkSpace();
+        void loadWorkSpace();
 
 private:
 
@@ -60,6 +67,7 @@ private:
     QComboBox *cmbMode;
     QLabel *lbLight;
 
+    PolluxusLogger *pLogger;
 
     AdapterSetting demoSetting;
     AdapterSetting paperSetting;
@@ -74,6 +82,8 @@ private:
 signals:
 
 public slots:
+
+    void onSaveWorkSpaces();
 
     void onConnect();
     void onConnected();

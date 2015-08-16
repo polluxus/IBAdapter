@@ -34,33 +34,50 @@ PolluxusTopBar::PolluxusTopBar(QWidget *parent) :
     connect(pIBAdapter, SIGNAL(connected()), this, SLOT(onConnected()));
     connect(pIBAdapter, SIGNAL(disconnected()), this, SLOT(onDisconnected()));
 
+
+    pLogger = new PolluxusLogger(this);
+    pLogger->show();
+
+    connect(pIBAdapter, SIGNAL(orderUpdated(QString)), pLogger, SLOT(onOrderUpdated(QString)));
+    loadWorkSpace();
+
 }
+
+PolluxusTopBar::~PolluxusTopBar()
+{
+
+    saveWorkSpace();
+}
+
 
 void PolluxusTopBar::loadIBSettings()
 {
+    QString iniFileString = ::getIniFilePath();
 
-    QSettings *ibSettings = new QSettings(":/ibadapter.ini",QSettings::IniFormat);
+    QSettings *wsSettings = new QSettings(iniFileString, QSettings::IniFormat);
 
-    ibSettings->beginGroup("DEMO");
-    demoSetting.port = ibSettings->value("port", 4001).toInt();
-    demoSetting.pubport = ibSettings->value("pubport", 5201).toInt();
-    demoSetting.subport = ibSettings->value("subport", 5202).toInt();
+    qDebug()<<"testport:"<<wsSettings->value("testport", 2222).toInt();
+
+    wsSettings->beginGroup("DEMO");
+    demoSetting.port = wsSettings->value("port", 4001).toInt();
+    demoSetting.pubport = wsSettings->value("pubport", 5201).toInt();
+    demoSetting.subport = wsSettings->value("subport", 5202).toInt();
     demoSetting.discstr = "DEMO - port:" + std::to_string(demoSetting.port) +
                                " - pub:" + std::to_string(demoSetting.pubport) +
                                " - sub:" + std::to_string(demoSetting.subport);
 
-    ibSettings->beginGroup("PAPER");
-    paperSetting.port = ibSettings->value("port", 4001).toInt();
-    paperSetting.pubport = ibSettings->value("pubport", 5211).toInt();
-    paperSetting.subport = ibSettings->value("subport", 5212).toInt();
+    wsSettings->beginGroup("PAPER");
+    paperSetting.port = wsSettings->value("port", 4001).toInt();
+    paperSetting.pubport = wsSettings->value("pubport", 5211).toInt();
+    paperSetting.subport = wsSettings->value("subport", 5212).toInt();
     paperSetting.discstr = "PAPER - port:" + std::to_string(paperSetting.port) +
                                 " - pub:" + std::to_string(paperSetting.pubport) +
                                 " - sub:" + std::to_string(paperSetting.subport);
 
-    ibSettings->beginGroup("LIVE");
-    liveSetting.port = ibSettings->value("port", 4001).toInt();
-    liveSetting.pubport = ibSettings->value("pubport", 5221).toInt();
-    liveSetting.subport = ibSettings->value("subport", 5222).toInt();
+    wsSettings->beginGroup("LIVE");
+    liveSetting.port = wsSettings->value("port", 4001).toInt();
+    liveSetting.pubport = wsSettings->value("pubport", 5221).toInt();
+    liveSetting.subport = wsSettings->value("subport", 5222).toInt();
     liveSetting.discstr = "LIVE - port:" + std::to_string(liveSetting.port) +
                                " - pub:" + std::to_string(liveSetting.pubport) +
                                " - sub:" + std::to_string(liveSetting.subport);
@@ -75,14 +92,17 @@ void PolluxusTopBar::createMenuBar()
     pMenuBar = new QMenuBar;
 
     QAction *quit = new QAction("&Quit", this);
+    QAction *saveWS = new QAction("&Save Workspace", this);
 
     QMenu *file;
     file = pMenuBar->addMenu(QIcon(":/images/setup.png"), "Polluxus");
     file->addAction(quit);
+    file->addAction(saveWS);
 
     pMenuBar->addSeparator();
 
     connect(quit, SIGNAL(triggered()), qApp, SLOT(quit()));
+    connect(saveWS, SIGNAL(triggered()), this, SLOT(onSaveWorkSpaces()));
 
     pMenuBar->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
 }
@@ -106,6 +126,11 @@ void PolluxusTopBar::createToolBar()
     btnConnect = new QPushButton(tr("Connect"));
     btnConnect->setCheckable(true);
 
+
+    DigitalClock *pClock = new DigitalClock(this);
+
+
+
     lbLight = new QLabel();
     lbLight->setFixedWidth(24);
     lbLight->setFixedHeight(24);
@@ -123,7 +148,10 @@ void PolluxusTopBar::createToolBar()
     pToolBar->addWidget(btnTest);
     pToolBar->addWidget(btnConnect);
     pToolBar->addWidget(spacer);
+    pToolBar->addWidget(pClock);
     pToolBar->addWidget(lbLight);
+
+    //pClock->show();
 
     pToolBar->adjustSize();
 
@@ -132,6 +160,8 @@ void PolluxusTopBar::createToolBar()
     connect(btnTest, SIGNAL(clicked(bool)), this, SLOT(onTest()), Qt::DirectConnection);
     connect(btnConnect, SIGNAL(toggled(bool)), this, SLOT(onConnect()), Qt::DirectConnection);
     connect(cmbMode, SIGNAL(currentIndexChanged(int)), this, SLOT(onAdapterSettingChange(int)));
+
+
 
 }
 
@@ -164,6 +194,7 @@ void PolluxusTopBar::onAdapterSettingChange(int currentIndex)
 void PolluxusTopBar::onTest()
 {
     QMetaObject::invokeMethod(pIBAdapter, "onTest", Qt::QueuedConnection);
+
 }
 
 void PolluxusTopBar::onConnect()
@@ -223,6 +254,7 @@ void PolluxusTopBar::onConnected()
     }
 
     pMsgProcessor->start();
+    //QMetaObject::invokeMethod(pIBAdapter, "onReqCurrentTime", Qt::QueuedConnection);
 }
 
 void PolluxusTopBar::onDisconnected()
@@ -236,3 +268,49 @@ void PolluxusTopBar::onDisconnected()
 
 }
 
+
+void PolluxusTopBar::saveWorkSpace()
+{
+    qDebug() << "PolluxusTopBar::saveWorkSpace";
+    QString iniFileString = ::getIniFilePath();
+    QSettings *wsSettings = new QSettings(iniFileString, QSettings::IniFormat);
+
+    wsSettings->setValue("appname", "Polluxus");
+
+    wsSettings->beginGroup("polluxustopbar");
+    wsSettings->setValue("geometry", saveGeometry());
+    wsSettings->setValue( "maximized", isMaximized());
+    if ( !isMaximized() ) {
+            wsSettings->setValue( "pos", pos() );
+            wsSettings->setValue( "size", size() );
+        }
+    wsSettings->endGroup();
+    wsSettings->sync();
+}
+
+void PolluxusTopBar::loadWorkSpace()
+{
+    qDebug() << "PolluxusTopBar::loadWorkSpace";
+    QString iniFileString = ::getIniFilePath();
+
+    QSettings *wsSettings = new QSettings(iniFileString, QSettings::IniFormat);
+
+    int port;
+    port = wsSettings->value("appname", 4000).toInt();
+    qDebug() << "Read successfully ini:" << port;
+    wsSettings->beginGroup("polluxustopbar");
+    restoreGeometry(wsSettings->value( "geometry", saveGeometry() ).toByteArray());
+    move(wsSettings->value( "pos", pos() ).toPoint());
+    resize(wsSettings->value( "size", size()).toSize());
+    if ( wsSettings->value( "maximized", isMaximized() ).toBool() )
+    {
+        showMaximized();
+    }
+    wsSettings->endGroup();
+}
+
+void PolluxusTopBar::onSaveWorkSpaces()
+{
+    this->saveWorkSpace();
+    pLogger->saveWorkSpace();
+}

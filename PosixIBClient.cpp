@@ -145,7 +145,7 @@ void PosixIBClient::processMessages()
 
     if( sleepDeadline > 0) {
         // initialize timeout with m_sleepDeadline - now
-        qDebug() << "PosixClient::processMessages: m_sleepDeadline";
+        qDebug() << "PosixClient::processMessages";
         tval.tv_sec = sleepDeadline - now;
     }
 
@@ -212,9 +212,10 @@ void PosixIBClient::onTest()
     qDebug() << "Placing order ....";
     placeOrder();
 
-//    qDebug() << "Requesting market data ....";
-//    onReqMktData();
+    //qDebug() << "Requesting market data ....";
+    //onReqMktData();
 }
+
 
 void PosixIBClient::sayHello()
 {
@@ -226,7 +227,7 @@ void PosixIBClient::sayHello()
 
 void PosixIBClient::onReqCurrentTime()
 {
-
+    qDebug() << "onReqCurrentTime() entered";
 }
 
 void PosixIBClient::onReqMktData()
@@ -260,10 +261,10 @@ void PosixIBClient::getNextValidID()
 // methods
 void PosixIBClient::reqCurrentTime()
 {
-    qDebug() << "PosixIBClient: requesting current time";
-    sleepDeadline = time( NULL) + PING_DEADLINE;
-    state = ST_PING_ACK;
-    pClient->reqCurrentTime();
+//    qDebug() << "PosixIBClient: requesting current time";
+//    sleepDeadline = time( NULL) + PING_DEADLINE;
+//    state = ST_PING_ACK;
+//    pClient->reqCurrentTime();
 
 }
 
@@ -300,13 +301,28 @@ void PosixIBClient::orderStatus( OrderId orderId, const IBString &status, int fi
 	   double lastFillPrice, int clientId, const IBString& whyHeld)
 
 {
-    qDebug() << "OrderStatus:" << "OrderId:" << orderId << ", Status:"
-             << QString::fromStdString(status) << ", filled:" << filled
-             << ", remaining:" << remaining << ", avgPx:" << avgFillPrice
-             << ", permId:" << permId << ", parentId:" << parentId
-             << ", lastFillPrice:" << lastFillPrice
-             << ", clientId:" << clientId
-             << ", whyHeld:" << QString::fromStdString(whyHeld);
+    QString msg("OrderStatus | orderId:");
+    msg.append(QString::number(orderId));
+    msg.append(", Status:");
+    msg.append(QString::fromStdString(status));
+    msg.append(", remaining:");
+    msg.append(QString::number(filled));
+    msg.append(", filled:");
+    msg.append(QString::number(remaining));
+    msg.append(", avgPx:");
+    msg.append(QString::number(avgFillPrice));
+
+//    msg =  "OrderStatus:" + "OrderId:" + orderId + ", Status:"
+//                          + QString::fromStdString(status) + ", filled:" + filled
+//                          + ", remaining:" + remaining + ", avgPx:" + avgFillPrice
+//                          + ", permId:" + permId + ", parentId:" + parentId
+//                          + ", lastFillPrice:" + lastFillPrice
+//                          + ", clientId:" + clientId
+//                          + ", whyHeld:" + QString::fromStdString(whyHeld);
+
+    qDebug() << msg;
+
+    emit orderUpdated(msg);
 }
 
 void PosixIBClient::nextValidId( OrderId orderId)
@@ -317,6 +333,20 @@ void PosixIBClient::nextValidId( OrderId orderId)
 
 void PosixIBClient::currentTime( long time)
 {
+//    if (state == ST_PING_ACK) {
+//        time_t t = ( time_t)time;
+
+//        QDateTime dt;
+//        dt.setTime_t(t);
+
+//        qDebug() << "IB currentTime:" << dt.toString("hh:mm:ss:zzz");
+
+//        time_t now = ::time(NULL);
+//        sleepDeadline = now + SLEEP_BETWEEN_PINGS;
+
+//        state = ST_IDLE;
+//    }
+
 
 }
 
@@ -329,12 +359,12 @@ void PosixIBClient::error(const int id, const int errorCode, const IBString erro
 
 void PosixIBClient::tickPrice( TickerId tickerId, TickType field, double price, int canAutoExecute)
 {
-    qDebug() << "Tick price";
+    qDebug() << "Tick price:" << tickerId << ", price:" << price;
 
 }
 void PosixIBClient::tickSize( TickerId tickerId, TickType field, int size)
 {
-    qDebug() << "Tick size";
+    qDebug() << "Tick size:" << tickerId << ", size:" << size;
 
 }
 void PosixIBClient::tickOptionComputation( TickerId tickerId, TickType tickType, double impliedVol, double delta,
